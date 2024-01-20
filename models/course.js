@@ -28,6 +28,10 @@ const CourseSchema = new Schema({
     type: Number,
     required: true,
   },
+  code: {
+    type: String,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model('Course', CourseSchema);
