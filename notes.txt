@@ -1,0 +1,10 @@
+ARP (Address Reslution Protocol): IP address (logical) to MAC address (physical)
+
+ARP Request is always broadcast message (FF:FF:FF:FF:FF:FF)
+
+ARP Reply is always unicast message
+
+ARP Request is sent by the source host to all hosts on the local network
+
+ARP Reply is sent by the destination host to the source host
+

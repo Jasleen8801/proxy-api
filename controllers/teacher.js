@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const Teacher = require('../models/teacher');
+const Course = require('../models/course');
 const createToken = require('../middlewares/teacherCreateToken');
 
 exports.postLogin = async (req, res) => {
@@ -37,6 +38,25 @@ exports.getTeacher = async (req, res) => {
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
     return res.status(200).json({ teacher: teacher, message: 'Fetched data successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}
+
+exports.createCourse = async (req, res) => {
+  try {
+    const courseData = req.body;
+    const { token } = req.body;
+    
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    courseData.teacher = teacher;
+    
+    const course = new Course(courseData);
+    await course.save();
+    
+    return res.status(200).json({ message: 'Course created successfully' });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });

@@ -20,6 +20,14 @@ const CourseSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Teacher',
   },
+  batch: {
+    type: String,
+    required: true,
+  },
+  totalNoOfClasses: {
+    type: Number,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model('Course', CourseSchema);
