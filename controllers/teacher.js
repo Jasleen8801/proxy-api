@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -7,8 +8,12 @@ const Teacher = require('../models/teacher');
 const Course = require('../models/course');
 const Session = require('../models/session');
 const Attendance = require('../models/attendance');
+const Student = require('../models/student');
+const Sheet = require('../models/sheet');
 const createToken = require('../middlewares/teacherCreateToken');
-const getBSSID = require('../middlewares/getBSSID');
+// const getBSSID = require('../utils/getBSSID');
+const createGoogleSheet = require('../utils/createGoogleSheet');
+const updateGoogleSheet = require('../utils/updateGoogleSheet');
 
 exports.postLogin = async (req, res) => {
   try {
@@ -86,14 +91,14 @@ exports.createSession = async (req, res) => {
       return res.status(400).json({ message: 'Course does not exists' });
     }
 
-    const teacherBSSID = await getBSSID(teacherIPAddress);
+    // const teacherBSSID = await getBSSID(teacherIPAddress);
 
     const session = new Session({
       course: course,
       code: code,
       teacherIPAddress: teacherIPAddress,
       status: status,
-      teacherBSSID: teacherBSSID,
+      // teacherBSSID: teacherBSSID,
       location: location,
     });
     await session.save();
@@ -104,9 +109,141 @@ exports.createSession = async (req, res) => {
     });
     await attendance.save();
 
-    return res.status(200).json({ message: 'Session created successfully' });
+    return res.status(200).json({ message: 'Session created successfully', code: code });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });
   }
 }
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const teacher = await Teacher.findOne({ email: email });
+    teacher.password = hashedPassword;
+    await teacher.save();
+    return res.status(200).json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+exports.updateTeacher = async (req, res) => {
+  try {
+    const { teacherData } = req.body;
+    const { token } = req.body;
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    teacher.name = teacherData.name;
+    teacher.email = teacherData.email;
+    await teacher.save();
+    return res.status(200).json({ message: 'Teacher updated successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}
+
+exports.markAttendance = async (req, res) => {
+  try {
+    const { studentRollNo, courseId } = req.body;
+    const course = await Course.find({ courseCode: courseId });
+    const student = await Student.find({ rollNo: studentRollNo });
+    const session = await Session.find({ course: course, status: 'on' });
+    const attendance = await Attendance.find({ session: session });
+    attendance.students.push(student);
+    await attendance.save();
+    return res.status(200).json({ message: 'Attendance marked successfully' });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+exports.stopSession = async (req, res) => {
+  try {
+    const { sessionCode } = req.body;
+    const session = await Session.findOne({ code: sessionCode, status: 'on' });
+    session.status = 'off';
+    await session.save();
+    return res.status(200).json({ message: 'Session stopped successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+exports.getAttendance = async (req, res) => {
+  try {
+    const { courseCode } = req.body;
+    const course = await Course.findOne({ courseCode: courseCode });
+    const session = await Session.find({ course: course, status: 'off' });
+    const mp = new Map(); 
+    for (let i=0; i<session.length; i++){
+      const attendance = await Attendance.findOne({ session: session[i] });
+      const students = attendance.students;
+      for (let j=0; j<students.length; j++){
+        const key = `${students[j].rollNo}_${session[i].startTime}`;
+        mp.set(key, 'present');
+      }
+    }
+    return res.status(200).json({ attendance: mp, message: 'Fetched data successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+exports.getAttendanceByDate = async (req, res) => {
+  try {
+    const { courseCode, date } = req.body;
+    const course = await Course.findOne({ courseCode: courseCode });
+    const session = await Session.find({ course: course, status: 'off' });
+    const mp = new Map();
+    for (let i=0; i<session.length; i++){
+      const attendance = await Attendance.findOne({ session: session[i] });
+      const students = attendance.students;
+      for (let j=0; j<students.length; j++){
+        mp.set(students[j].rollNo, 'present');
+      }
+    }
+    return res.status(200).json({ attendance: mp });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}
+
+exports.getSheet = async (req, res) => {
+  try {
+    const { courseCode } = req.body;
+    const course = await Course.findOne({ courseCode: courseCode });
+    const attendance = await Attendance.find({ course: course });
+    if(attendance){
+      const spreadsheetId = attendance.spreadsheetId;
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+      return res.status(200).json({ url: url, message: 'Fetched data successfully' });
+    }
+
+    const API_URL = `${process.env.NODESERVER}/${PORT}`;
+    const res = axios.post(`${API_URL}/teacher/attendance`, {
+      courseCode: courseCode,
+    });
+    const mp = res.data.attendance;
+
+    let spreadsheetId = createGoogleSheet(`${courseCode} Attendance`);
+    spreadsheetId = updateGoogleSheet(spreadsheetId, mp);
+    const sheet = new Sheet({
+      course: course,
+      spreadsheetId: spreadsheetId,
+    });
+    await sheet.save();
+
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    return res.status(200).json({ url: url, message: 'Fetched data successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};

@@ -11,15 +11,7 @@ const SessionSchema = new Schema({
     type: String,
     required: true,
   },
-  // teacherSSID: {
-  //   type: String,
-  //   required: true,
-  // },
   teacherIPAddress: {
-    type: String,
-    required: true,
-  },
-  teacherBSSID: {
     type: String,
     required: true,
   },
