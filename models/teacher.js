@@ -9,6 +9,7 @@ const TeacherSchema = new Schema({
   email: {
     type: String, 
     required: true,
+    unique: true,
   },
   password: {
     type: String,
@@ -19,7 +20,11 @@ const TeacherSchema = new Schema({
       type: Schema.Types.ObjectId,
       ref: 'Course',
     },
-  ]
+  ],
+  macAddress: {
+    type: String,
+    unique: true,
+  },
 });
 
 module.exports = mongoose.model('Teacher', TeacherSchema);

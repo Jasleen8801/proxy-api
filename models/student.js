@@ -9,6 +9,7 @@ const StudentSchema = new Schema({
   email: {
     type: String, 
     required: true,
+    unique: true,
   },
   password: {
     type: String,
@@ -17,6 +18,7 @@ const StudentSchema = new Schema({
   rollNo: {
     type: Number,
     required: true,
+    unique: true,
   },
   branch: {
     type: String,

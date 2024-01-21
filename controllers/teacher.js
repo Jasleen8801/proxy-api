@@ -14,10 +14,12 @@ const createToken = require('../middlewares/teacherCreateToken');
 // const getBSSID = require('../utils/getBSSID');
 const createGoogleSheet = require('../utils/createGoogleSheet');
 const updateGoogleSheet = require('../utils/updateGoogleSheet');
+const { createAdvertisement, stopAdvertisement } = require('../utils/mdns');
 
 exports.postLogin = async (req, res) => {
   try {
     const userData = req.body;
+    // {userName, email, password, macAddress} TODO: macAddress: ref
 
     const existingUser = await Teacher.findOne({ email: userData.email });
     if (!existingUser) {
@@ -80,7 +82,18 @@ exports.createCourse = async (req, res) => {
 
 exports.createSession = async (req, res) => {
   try {
-    const { courseID, teacherIPAddress, status, location } = req.body;
+    const { courseID, status, location } = req.body;
+    const { token } = req.body;
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    const teacherMACAddress = teacher.macAddress;
+
+    const port = 4321;
+
+    const ad = createAdvertisement(courseID, port, teacherMACAddress);
+    setTimeout(() => {
+      stopAdvertisement(ad);
+    }, 300000); // 5 minutes
 
     const min = 100000;
     const max = 999999;
@@ -91,14 +104,10 @@ exports.createSession = async (req, res) => {
       return res.status(400).json({ message: 'Course does not exists' });
     }
 
-    // const teacherBSSID = await getBSSID(teacherIPAddress);
-
     const session = new Session({
       course: course,
       code: code,
-      teacherIPAddress: teacherIPAddress,
       status: status,
-      // teacherBSSID: teacherBSSID,
       location: location,
     });
     await session.save();

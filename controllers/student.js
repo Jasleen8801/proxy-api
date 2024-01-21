@@ -6,6 +6,7 @@ dotenv.config();
 const Student = require('../models/student');
 const Course = require('../models/course');
 const Session = require('../models/session');
+const Teacher = require('../models/teacher');
 const Attendance = require('../models/attendance');
 const createToken = require('../middlewares/studentCreateToken');
 // const getBSSID = require('../utils/getBSSID');
@@ -135,10 +136,13 @@ exports.joinCourse = async (req, res) => {
 
 exports.markAttendance = async (req, res) => {
   try {
-    const { code, courseID, studentIPAddress, studentLocation } = req.body;
+    const { code, courseID, studentMACAddress, studentLocation } = req.body;
     const { token } = req.body;
 
+    // TODO: check studentMAC Address: ref
+
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
     const student = await Student.findById(decodedToken.id);
     const course = await Course.findById(courseID);
     const session = await Session.findOne({ code: code, course: course });
@@ -149,9 +153,6 @@ exports.markAttendance = async (req, res) => {
       return res.status(400).json({ message: 'Session is off' });
     }
 
-    // const studentBSSID = await getBSSID(studentIPAddress);
-    // const bssidMatch = session.teacherBSSID === studentBSSID;
-    
     const teacherLocation = session.teacherLocation;
     const distance = Math.sqrt(
       Math.pow(teacherLocation.latitude - studentLocation.latitude, 2) +
@@ -159,10 +160,10 @@ exports.markAttendance = async (req, res) => {
     );
     const locationMatch = distance <= 0.0005; // 0.0005 is 50 meters
     
-    const IPAddressMatch = session.teacherIPAddress === studentIPAddress; // IP address of router connected to teacher's device and student's device should be same
+    const isMACAddressSame = studentMACAddress == teacher.macAddress;
     const codeMatch = session.code === code;
 
-    if(!locationMatch || !IPAddressMatch || !codeMatch) {
+    if(!locationMatch || !isMACAddressSame || !codeMatch) {
       return res.status(400).json({ message: "Can't mark attendance, contact your teacher" });
     }
 

@@ -11,10 +11,6 @@ const SessionSchema = new Schema({
     type: String,
     required: true,
   },
-  teacherIPAddress: {
-    type: String,
-    required: true,
-  },
   startTime: {
     type: Date,
     default: Date.now,
