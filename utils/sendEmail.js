@@ -4,6 +4,9 @@ dotenv.config();
 
 const sendEmail = async (email, subject, text) => {
   try {
+    const email = process.env.EMAIL;
+    const password = process.env.EMAIL_PASSWORD;
+    console.log(email, password);
     const transporter = nodemailer.createTransport({
       host: "smtp.forwardemail.net",
       port: 465,

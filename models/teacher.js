@@ -21,10 +21,10 @@ const TeacherSchema = new Schema({
       ref: 'Course',
     },
   ],
-  macAddress: {
-    type: String,
-    unique: true,
-  },
+  // macAddress: {
+  //   type: String,
+  //   unique: true,
+  // },
 });
 
 module.exports = mongoose.model('Teacher', TeacherSchema);

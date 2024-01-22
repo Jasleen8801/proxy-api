@@ -1,10 +1,10 @@
 const mdns = require('mdns');
 
-const createAdvertisement = (courseCode, port, teacherMACAddress) => {
+const createAdvertisement = (courseCode, port, teacherID) => {
   const ad = mdns.createAdvertisement(mdns.tcp('http'), port, {
     name: courseCode,
     txtRecord: {
-      macAddress: teacherMACAddress,
+      teacherID: teacherID,
     },
   });
   ad.start();

@@ -9,7 +9,7 @@ const Course = require('../models/course');
 const Session = require('../models/session');
 const Attendance = require('../models/attendance');
 const Student = require('../models/student');
-const Sheet = require('../models/sheet');
+const Sheet = require('../models/sheets');
 const createToken = require('../middlewares/teacherCreateToken');
 // const getBSSID = require('../utils/getBSSID');
 const createGoogleSheet = require('../utils/createGoogleSheet');
@@ -19,7 +19,7 @@ const { createAdvertisement, stopAdvertisement } = require('../utils/mdns');
 exports.postLogin = async (req, res) => {
   try {
     const userData = req.body;
-    // {userName, email, password, macAddress} TODO: macAddress: ref
+    // {email, password}
 
     const existingUser = await Teacher.findOne({ email: userData.email });
     if (!existingUser) {
@@ -44,7 +44,7 @@ exports.postLogin = async (req, res) => {
 
 exports.getTeacher = async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = req.headers.authorization.split(' ')[1]; 
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
     return res.status(200).json({ teacher: teacher, message: 'Fetched data successfully' });
@@ -57,7 +57,7 @@ exports.getTeacher = async (req, res) => {
 exports.createCourse = async (req, res) => {
   try {
     const courseData = req.body;
-    const { token } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
     
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
@@ -72,8 +72,11 @@ exports.createCourse = async (req, res) => {
       code: code,
     });
     await course.save();
+
+    teacher.courses.push(course);
+    await teacher.save();
     
-    return res.status(200).json({ message: 'Course created successfully' });
+    return res.status(200).json({ message: 'Course created successfully', code: code });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });
@@ -83,14 +86,14 @@ exports.createCourse = async (req, res) => {
 exports.createSession = async (req, res) => {
   try {
     const { courseID, status, location } = req.body;
-    const { token } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
-    const teacherMACAddress = teacher.macAddress;
+    // const teacherMACAddress = teacher.macAddress;
 
     const port = 4321;
 
-    const ad = createAdvertisement(courseID, port, teacherMACAddress);
+    const ad = createAdvertisement(courseID, port, teacher._id);
     setTimeout(() => {
       stopAdvertisement(ad);
     }, 300000); // 5 minutes
@@ -101,6 +104,7 @@ exports.createSession = async (req, res) => {
 
     const course = await Course.findById(courseID);
     if (!course) {
+      stopAdvertisement(ad);
       return res.status(400).json({ message: 'Course does not exists' });
     }
 
@@ -141,12 +145,10 @@ exports.resetPassword = async (req, res) => {
 
 exports.updateTeacher = async (req, res) => {
   try {
-    const { teacherData } = req.body;
-    const { token } = req.body;
+    const teacherData = req.body;
+    const token = req.headers.authorization.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-    const teacher = await Teacher.findById(decodedToken.id);
-    teacher.name = teacherData.name;
-    teacher.email = teacherData.email;
+    const teacher = await Teacher.findByIdAndUpdate(decodedToken.id, teacherData, { new: true });
     await teacher.save();
     return res.status(200).json({ message: 'Teacher updated successfully' });
   } catch (error) {

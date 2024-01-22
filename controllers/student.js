@@ -9,7 +9,6 @@ const Session = require('../models/session');
 const Teacher = require('../models/teacher');
 const Attendance = require('../models/attendance');
 const createToken = require('../middlewares/studentCreateToken');
-// const getBSSID = require('../utils/getBSSID');
 
 exports.postSignup = async (req, res) => {
   try {
@@ -58,7 +57,8 @@ exports.postLogin = async (req, res) => {
 
 exports.getStudent = async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = req.headers.authorization.split(' ')[1]; 
+    // console.log(token);
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const student = await Student.findById(decodedToken.id);
     return res.status(200).json({ student: student, message: 'Fetched data successfully' });
@@ -70,13 +70,11 @@ exports.getStudent = async (req, res) => {
 
 exports.updateStudent = async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-    const student = await Student.findById(decodedToken.id);
     const updatedData = req.body;
-    student = { ...student, ...updatedData };
-    await student.save();
-    return res.status(200).json({ message: 'Updated successfully', student: student });
+    const updatedStudent = await Student.findByIdAndUpdate(decodedToken.id, updatedData, { new: true }); 
+    return res.status(200).json({ message: 'Updated successfully', student: updatedStudent });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });
@@ -85,7 +83,8 @@ exports.updateStudent = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   try {
-    const { token, oldPassword, newPassword } = req.body;
+    const token = req.headers.authorization.split(' ')[1];   
+    const { oldPassword, newPassword } = req.body;
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const student = await Student.findById(decodedToken.id);
     
@@ -109,10 +108,10 @@ exports.changePassword = async (req, res) => {
 exports.joinCourse = async (req, res) => {
   try {
     const { code, courseID } = req.body;
-    const { token } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const student = await Student.findById(decodedToken.id);
-    const course = await Course.findById(courseID);
+    const course = await Course.findOne({ courseCode: courseID })
     const isCodeMatch = course.code === code;
     if (!isCodeMatch) {
       return res.status(400).json({ message: 'Invalid Code' });
@@ -121,7 +120,7 @@ exports.joinCourse = async (req, res) => {
     if (isAlreadyJoined) {
       return res.status(400).json({ message: 'Already Joined' });
     }
-    student.course.push(courseID);
+    student.course.push(course);
     await student.save();
     
     course.students.push(student);
@@ -136,10 +135,8 @@ exports.joinCourse = async (req, res) => {
 
 exports.markAttendance = async (req, res) => {
   try {
-    const { code, courseID, studentMACAddress, studentLocation } = req.body;
+    const { code, courseID, studentLocation } = req.body;
     const { token } = req.body;
-
-    // TODO: check studentMAC Address: ref
 
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
@@ -160,10 +157,10 @@ exports.markAttendance = async (req, res) => {
     );
     const locationMatch = distance <= 0.0005; // 0.0005 is 50 meters
     
-    const isMACAddressSame = studentMACAddress == teacher.macAddress;
+    // const isMACAdressSame = studentMACAddress == teacher.macAddress;
     const codeMatch = session.code === code;
 
-    if(!locationMatch || !isMACAddressSame || !codeMatch) {
+    if(!locationMatch  || !codeMatch) {
       return res.status(400).json({ message: "Can't mark attendance, contact your teacher" });
     }
 
