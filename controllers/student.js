@@ -1,12 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mdns = require('mdns');
 const dotenv = require('dotenv');
 dotenv.config();
 
 const Student = require('../models/student');
 const Course = require('../models/course');
 const Session = require('../models/session');
-const Teacher = require('../models/teacher');
 const Attendance = require('../models/attendance');
 const createToken = require('../middlewares/studentCreateToken');
 
@@ -135,11 +135,10 @@ exports.joinCourse = async (req, res) => {
 
 exports.markAttendance = async (req, res) => {
   try {
-    const { code, courseID, studentLocation } = req.body;
+    const { code, courseID, studentLocation, networkInterface } = req.body;
     const { token } = req.body;
 
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-    const teacher = await Teacher.findById(decodedToken.id);
     const student = await Student.findById(decodedToken.id);
     const course = await Course.findById(courseID);
     const session = await Session.findOne({ code: code, course: course });
@@ -150,30 +149,42 @@ exports.markAttendance = async (req, res) => {
       return res.status(400).json({ message: 'Session is off' });
     }
 
-    const teacherLocation = session.teacherLocation;
-    const distance = Math.sqrt(
-      Math.pow(teacherLocation.latitude - studentLocation.latitude, 2) +
-      Math.pow(teacherLocation.longitude - studentLocation.longitude, 2)
-    );
-    const locationMatch = distance <= 0.0005; // 0.0005 is 50 meters
-    
-    // const isMACAdressSame = studentMACAddress == teacher.macAddress;
-    const codeMatch = session.code === code;
+    if (networkInterface !== session.networkInterface) {
+      return res.status(400).json({ message: 'Invalid Network Interface' });
+    }
 
-    if(!locationMatch  || !codeMatch) {
+    const browser = mdns.createBrowser(mdns.tcp('http'), { resolverSequence: [mdns.rst.DNSServiceResolve(), 'DNSServiceGetAddrInfo'] }, { networkInterface: networkInterface });
+    browser.on('serviceUp', async (service) => {
+      if (service.name === courseID) {
+        const teacherLocation = service.addresses[0];
+        const distance = Math.sqrt(
+          Math.pow(teacherLocation - studentLocation, 2)
+        );
+        const locationMatch = distance <= 0.0005; // 0.0005 is 50 meters
+        
+        const codeMatch = session.code === code;
+
+        if(!locationMatch  || !codeMatch) {
+          return res.status(400).json({ message: "Can't mark attendance, contact your teacher" });
+        }
+
+        const attendance = await Attendance.findOne({ session: session._id });
+        const isAlreadyMarked = attendance.students.includes(student._id);
+        if (isAlreadyMarked) {
+          return res.status(400).json({ message: 'Already Marked' });
+        }
+
+        attendance.students.push(student);
+        await attendance.save();
+
+        return res.status(200).json({ message: 'Attendance marked successfully' });
+      }
+    })
+    browser.start();
+
+    setTimeout(() => {
       return res.status(400).json({ message: "Can't mark attendance, contact your teacher" });
-    }
-
-    const attendance = await Attendance.findOne({ session: session._id });
-    const isAlreadyMarked = attendance.students.includes(student._id);
-    if (isAlreadyMarked) {
-      return res.status(400).json({ message: 'Already Marked' });
-    }
-
-    attendance.students.push(student);
-    await attendance.save();
-
-    return res.status(200).json({ message: 'Attendance marked successfully' });
+    }, 10000);
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });
@@ -182,11 +193,13 @@ exports.markAttendance = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
+    const { cemail, newPassword } = req.body;
     const hashedPassword = await bcrypt.hash(newPassword, 12);  
-    const student = Student.findOne({ email: email });
-    student.password = hashedPassword;
-    await student.save();
+    const student = Student.findOneAndReplace({ email: cemail }, { password: hashedPassword });
+    console.log(student);
+    if(!student) {
+      return res.status(400).json({ message: 'Invalid Email' });
+    }
     return res.status(200).json({ message: 'Password reset successfully' });
   } catch (error) {
     console.log(error);

@@ -10,11 +10,11 @@ exports.sendOTP = async (req, res) => {
     const text = `Your password reset code is ${code}`;
     await sendEmail(email, subject, text);
     
-    const otp = new OTP({
-      email: email,
-      code: code,
-    });
-    await otp.save();
+      const otp = new OTP({
+        email: email,
+        otp: code,
+      });
+      await otp.save();
     return res.status(200).json({ message: 'OTP sent successfully' });
   } catch (error) {
     console.log(error);
@@ -25,6 +25,7 @@ exports.sendOTP = async (req, res) => {
 exports.verifyOTP = async (req, res) => {
   try {
     const { code, email } = req.body;
+    console.log(code, email);
     const otp = await OTP.findOne({ email: email });
     if (!otp) {
       return res.status(400).json({ message: 'Invalid Email' });
@@ -32,7 +33,8 @@ exports.verifyOTP = async (req, res) => {
     if (otp.startTime + 600000 < Date.now()) {
       return res.status(400).json({ message: 'OTP expired' });
     }
-    if (otp.code !== code) {
+    console.log(otp);
+    if (otp.otp !== code) {
       return res.status(400).json({ message: 'Invalid OTP' });
     }
     otp.valid = false;

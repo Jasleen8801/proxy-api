@@ -61,3 +61,13 @@ exports.createTeacher = async (req, res) => {
     return res.status(500).json({ message: 'Server Error' });
   }
 }
+
+exports.getAllTeachers = async (req, res) => {
+  try {
+    const teachers = await Teacher.find();
+    return res.status(200).json({ teachers: teachers });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}

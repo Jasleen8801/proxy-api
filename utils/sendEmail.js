@@ -4,13 +4,11 @@ dotenv.config();
 
 const sendEmail = async (email, subject, text) => {
   try {
-    const email = process.env.EMAIL;
     const password = process.env.EMAIL_PASSWORD;
-    console.log(email, password);
+    // console.log(email, password);
     const transporter = nodemailer.createTransport({
-      host: "smtp.forwardemail.net",
-      port: 465,
-      secure: true,
+      service: 'gmail',
+      name: process.env.EMAIL_USERNAME,
       auth: {
         user: process.env.EMAIL,
         pass: process.env.EMAIL_PASSWORD,
@@ -24,8 +22,13 @@ const sendEmail = async (email, subject, text) => {
       text: text,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully');
+    await transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log('Email sent successfully: ' + info.response);
+      }
+    });
   } catch (error) {
     console.log(error);
   }

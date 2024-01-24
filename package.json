@@ -10,7 +10,6 @@
   "author": "Jasleen Kaur",
   "license": "ISC",
   "dependencies": {
-    "arpscan": "^1.0.2",
     "axios": "^1.6.5",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",

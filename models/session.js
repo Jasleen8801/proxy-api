@@ -21,6 +21,14 @@ const SessionSchema = new Schema({
     default: 'on',
   },
   teacherLocation: LocationSchema,
+  networkInterface: {
+    type: String,
+    required: true,
+  },
+  port: {
+    type: Number,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model('Session', SessionSchema);

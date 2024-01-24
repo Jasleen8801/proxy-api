@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const mdns = require('mdns');
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -10,11 +11,10 @@ const Session = require('../models/session');
 const Attendance = require('../models/attendance');
 const Student = require('../models/student');
 const Sheet = require('../models/sheets');
+const Location = require('../models/location');
 const createToken = require('../middlewares/teacherCreateToken');
-// const getBSSID = require('../utils/getBSSID');
 const createGoogleSheet = require('../utils/createGoogleSheet');
 const updateGoogleSheet = require('../utils/updateGoogleSheet');
-const { createAdvertisement, stopAdvertisement } = require('../utils/mdns');
 
 exports.postLogin = async (req, res) => {
   try {
@@ -83,52 +83,6 @@ exports.createCourse = async (req, res) => {
   }
 }
 
-exports.createSession = async (req, res) => {
-  try {
-    const { courseID, status, location } = req.body;
-    const token = req.headers.authorization.split(' ')[1];
-    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-    const teacher = await Teacher.findById(decodedToken.id);
-    // const teacherMACAddress = teacher.macAddress;
-
-    const port = 4321;
-
-    const ad = createAdvertisement(courseID, port, teacher._id);
-    setTimeout(() => {
-      stopAdvertisement(ad);
-    }, 300000); // 5 minutes
-
-    const min = 100000;
-    const max = 999999;
-    const code = Math.floor(Math.random() * (max - min + 1)) + min;
-
-    const course = await Course.findById(courseID);
-    if (!course) {
-      stopAdvertisement(ad);
-      return res.status(400).json({ message: 'Course does not exists' });
-    }
-
-    const session = new Session({
-      course: course,
-      code: code,
-      status: status,
-      location: location,
-    });
-    await session.save();
-
-    const attendance = new Attendance({
-      session: session,
-      students: [],
-    });
-    await attendance.save();
-
-    return res.status(200).json({ message: 'Session created successfully', code: code });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: 'Server Error' });
-  }
-}
-
 exports.resetPassword = async (req, res) => {
   try {
     const { email, newPassword } = req.body;
@@ -143,6 +97,18 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+exports.getAllStudents = async (req, res) => {
+  try {
+    const { courseCode } = req.body;
+    const course = await Course.findOne({ courseCode: courseCode });
+    const students = await Student.find({ course: course });
+    return res.status(200).json({ students: students, message: 'Fetched data successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};
+
 exports.updateTeacher = async (req, res) => {
   try {
     const teacherData = req.body;
@@ -151,6 +117,63 @@ exports.updateTeacher = async (req, res) => {
     const teacher = await Teacher.findByIdAndUpdate(decodedToken.id, teacherData, { new: true });
     await teacher.save();
     return res.status(200).json({ message: 'Teacher updated successfully' });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}
+
+exports.createSession = async (req, res) => {
+  try {
+    const { courseID, location, networkInterface } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+
+    const port = 4321;
+
+    const ad = mdns.createAdvertisement(mdns.tcp('http'), port, {
+      name: courseID,
+      txtRecord: {
+        teacherID: teacher._id,
+        networkInterface: networkInterface,
+      },
+    });
+    ad.start();
+
+    const min = 100000;
+    const max = 999999;
+    const code = Math.floor(Math.random() * (max - min + 1)) + min;
+
+    const course = await Course.findOne({ courseCode: courseID });
+    // console.log(courseID,course);
+    if (!course) {
+      ad.stop();
+      return res.status(400).json({ message: 'Course does not exists' });
+    }
+
+    const loc = new Location({
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
+    await loc.save();
+
+    const session = new Session({
+      course: course,
+      code: code,
+      teacherLocation: loc,
+      networkInterface: networkInterface,
+      port: port,
+    });
+    await session.save();
+
+    const attendance = new Attendance({
+      session: session,
+      students: [],
+    });
+    await attendance.save();
+
+    return res.status(200).json({ message: 'Session created successfully', code: code });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });
@@ -237,7 +260,7 @@ exports.getSheet = async (req, res) => {
       return res.status(200).json({ url: url, message: 'Fetched data successfully' });
     }
 
-    const API_URL = `${process.env.NODESERVER}/${PORT}`;
+    const API_URL = `${process.env.NODESERVER}/${process.env.PORT}`;
     const res = axios.post(`${API_URL}/teacher/attendance`, {
       courseCode: courseCode,
     });

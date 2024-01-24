@@ -1,17 +1,18 @@
 const express = require("express")
 const router = express.Router()
 
-const { postLogin, getTeacher, createCourse, createSession, resetPassword, updateTeacher, markAttendance, stopSession, getAttendance, getAttendanceByDate, getSheet } = require("../controllers/teacher")
+const { postLogin, getTeacher, createCourse, createSession, resetPassword, updateTeacher, markAttendance, stopSession, getAttendance, getAttendanceByDate, getSheet, getAllStudents } = require("../controllers/teacher")
 const { sendOTP, verifyOTP } = require('../controllers/mailer');
 
 router.post("/login", postLogin) //tested
 router.get("/", getTeacher) //tested
 router.post("/create-course", createCourse) //tested
-router.post("/create-session", createSession)
-router.post('/send-otp', sendOTP);
-router.post('/verify-otp', verifyOTP);
-router.post('/reset-password', resetPassword);
+router.post('/send-otp', sendOTP); //tested
+router.post('/verify-otp', verifyOTP); //tested
 router.put('/update', updateTeacher); //tested
+router.post('/reset-password', resetPassword); //FIXME:
+router.get('/students', getAllStudents); //tested
+router.post("/create-session", createSession); //tested
 router.post('/mark-attendance', markAttendance);
 router.post('/stop-session', stopSession);
 router.get('/attendance', getAttendance);

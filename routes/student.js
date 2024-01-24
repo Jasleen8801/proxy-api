@@ -9,11 +9,11 @@ router.post('/login', postLogin); //tested
 router.get('/', getStudent); //tested
 router.post('/join-course', joinCourse); //tested
 router.put('/update', updateStudent); //tested
-router.post('/mark-attendance', markAttendance);
 router.post('/change-password', changePassword); //tested
-router.post('/send-otp', sendOTP);
-router.post('/verify-otp', verifyOTP);
-router.post('/reset-password', resetPassword);
+router.post('/send-otp', sendOTP); //tested
+router.post('/verify-otp', verifyOTP); //tested
+router.post('/mark-attendance', markAttendance);
+router.post('/reset-password', resetPassword); // FIXME: 
 router.get('/attendance', getAttendance);
 
 module.exports = router;
