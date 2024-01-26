@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mdns = require('mdns');
+const net = require('net');
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -9,6 +10,7 @@ const Course = require('../models/course');
 const Session = require('../models/session');
 const Attendance = require('../models/attendance');
 const createToken = require('../middlewares/studentCreateToken');
+const { response } = require('express');
 
 exports.postSignup = async (req, res) => {
   try {
@@ -156,28 +158,43 @@ exports.markAttendance = async (req, res) => {
     const browser = mdns.createBrowser(mdns.tcp('http'), { resolverSequence: [mdns.rst.DNSServiceResolve(), 'DNSServiceGetAddrInfo'] }, { networkInterface: networkInterface });
     browser.on('serviceUp', async (service) => {
       if (service.name === courseID) {
-        const teacherLocation = service.addresses[0];
-        const distance = Math.sqrt(
-          Math.pow(teacherLocation - studentLocation, 2)
-        );
-        const locationMatch = distance <= 0.0005; // 0.0005 is 50 meters
-        
-        const codeMatch = session.code === code;
+        const teacherIPAddress = service.addresses[0];
+        const teacherPort = service.port;
 
-        if(!locationMatch  || !codeMatch) {
-          return res.status(400).json({ message: "Can't mark attendance, contact your teacher" });
-        }
-
-        const attendance = await Attendance.findOne({ session: session._id });
-        const isAlreadyMarked = attendance.students.includes(student._id);
-        if (isAlreadyMarked) {
-          return res.status(400).json({ message: 'Already Marked' });
-        }
-
-        attendance.students.push(student);
-        await attendance.save();
-
-        return res.status(200).json({ message: 'Attendance marked successfully' });
+        // switch to tcp after mdns discovery
+        const tcp_client = new net.Socket();
+        tcp_client.connect(teacherPort, teacherIPAddress, async () => {
+          console.log('Connected to teacher');
+          const data_to_send = {
+            studentID: student._id,
+            studentLocation: studentLocation,
+            code: code,
+            sessionID: session._id,
+          };
+          tcp_client.write(JSON.stringify(data_to_send));
+        });
+        tcp_client.on('data', async (data) => {
+          console.log(`Received data from teacher: ${data}`);
+          const responseData = JSON.parse(data);
+          if(responseData.success) {
+            const distance = Math.sqrt((Math.pow(session.teacherLocation.latitude - responseData.studentLocation.latitude, 2)) + (Math.pow(session.teacherLocation.longitude - responseData.studentLocation.longitude, 2)));
+            const isWithinDistance = distance <= 0.05; // 50 meters
+            const isSameCode = responseData.code === session.code; 
+            if (isWithinDistance && isSameCode){
+              const attendance = await Attendance.findOne({ session: session });
+              if(attendance.students.includes(student)) {
+                return res.status(400).json({ message: 'Already marked attendance' });
+              }
+              attendance.students.push(student);
+              await attendance.save();
+              return res.status(200).json({ message: 'Attendance marked successfully' });
+            }
+          }
+          return res.status(400).json({ message: 'Can\'t mark attendance, contact your teacher' });
+        })
+        tcp_client.on('close', () => {
+          console.log('Connection closed');
+        })
       }
     })
     browser.start();

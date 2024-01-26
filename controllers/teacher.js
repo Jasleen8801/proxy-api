@@ -132,7 +132,8 @@ exports.createSession = async (req, res) => {
 
     const port = 4321;
 
-    const ad = mdns.createAdvertisement(mdns.tcp('http'), port, {
+    //time limit is 1 minute
+    const ad = mdns.createAdvertisement(mdns.udp(string(courseID)), port, {
       name: courseID,
       txtRecord: {
         teacherID: teacher._id,
