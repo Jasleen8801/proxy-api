@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const mdns = require('mdns');
+const get_port = require('get-port');
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -15,6 +15,7 @@ const Location = require('../models/location');
 const createToken = require('../middlewares/teacherCreateToken');
 const createGoogleSheet = require('../utils/createGoogleSheet');
 const updateGoogleSheet = require('../utils/updateGoogleSheet');
+const { startSocketServer, stopSocketServer } = require('../socket/server/app');
 
 exports.postLogin = async (req, res) => {
   try {
@@ -130,17 +131,16 @@ exports.createSession = async (req, res) => {
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
 
-    const port = 4321;
+    const port = await get_port();
 
-    //time limit is 1 minute
-    const ad = mdns.createAdvertisement(mdns.udp(string(courseID)), port, {
+    const sessionObj = {
       name: courseID,
-      txtRecord: {
-        teacherID: teacher._id,
-        networkInterface: networkInterface,
-      },
-    });
-    ad.start();
+      teacherID: teacher._id,
+      networkInterface: networkInterface,
+      port: port,
+    };
+
+    startSocketServer(sessionObj);
 
     const min = 100000;
     const max = 999999;
@@ -149,7 +149,7 @@ exports.createSession = async (req, res) => {
     const course = await Course.findOne({ courseCode: courseID });
     // console.log(courseID,course);
     if (!course) {
-      ad.stop();
+      stopSocketServer(sessionObj);
       return res.status(400).json({ message: 'Course does not exists' });
     }
 
