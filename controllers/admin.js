@@ -40,6 +40,7 @@ exports.postLogin = async (req, res) => {
     }
 
     const token = createToken(existingUser);
+    res.header('Set-Cookie', `token=${token}; HttpOnly`)
     return res.status(200).json({ token: token, message: 'Logged in successfully' });
   } catch (error) {
     console.log(error);
@@ -50,6 +51,12 @@ exports.postLogin = async (req, res) => {
 exports.createTeacher = async (req, res) => {
   try {
     const teacherData = req.body;
+    const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const admin = await Admin.findById(decodedToken.id);
+    if (!admin) {
+      return res.status(400).json({ message: 'Invalid Credentials' });
+    }
     
     const hashedPassword = await bcrypt.hash(teacherData.password, 12);
     const teacher = new Teacher({ ...teacherData, password: hashedPassword });
@@ -64,6 +71,12 @@ exports.createTeacher = async (req, res) => {
 
 exports.getAllTeachers = async (req, res) => {
   try {
+     const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const admin = await Admin.findById(decodedToken.id);
+    if (!admin) {
+      return res.status(400).json({ message: 'Invalid Credentials' });
+    }
     const teachers = await Teacher.find();
     return res.status(200).json({ teachers: teachers });
   } catch (error) {

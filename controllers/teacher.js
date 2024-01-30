@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const get_port = require('get-port');
+const portfinder = require('portfinder');
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -131,7 +131,7 @@ exports.createSession = async (req, res) => {
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
 
-    const port = await get_port();
+    const port = await portfinder.getPortPromise();
 
     const sessionObj = {
       name: courseID,

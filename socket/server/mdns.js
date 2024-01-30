@@ -29,5 +29,5 @@ class MDNSService extends EventEmitter {
   }
 }
 
-const MDNSService = new MDNSService();
-module.exports = MDNSService;
+const mdnsService = new MDNSService();
+module.exports = mdnsService;
