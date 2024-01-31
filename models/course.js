@@ -6,7 +6,7 @@ const CourseSchema = new Schema({
     type: Number,
     unique: true,
     autoIncrement: true,
-    default: 1,
+    // default: 1,
   },
   courseName: {
     type: String,
@@ -29,6 +29,7 @@ const CourseSchema = new Schema({
   totalNoOfClasses: {
     type: Number,
     required: true,
+    default: 30,
   },
   code: {
     type: String,

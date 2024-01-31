@@ -109,16 +109,15 @@ exports.changePassword = async (req, res) => {
 
 exports.joinCourse = async (req, res) => {
   try {
-    const { code, courseID } = req.body;
+    const { code } = req.body;
     const token = req.headers.authorization.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const student = await Student.findById(decodedToken.id);
-    const course = await Course.findOne({ courseCode: courseID })
-    const isCodeMatch = course.code === code;
-    if (!isCodeMatch) {
+    const course = await Course.findOne({ code: code });
+    if (!course) {
       return res.status(400).json({ message: 'Invalid Code' });
     }
-    const isAlreadyJoined = student.course.includes(courseID);
+    const isAlreadyJoined = student.course.includes(course);
     if (isAlreadyJoined) {
       return res.status(400).json({ message: 'Already Joined' });
     }
@@ -187,9 +186,9 @@ exports.resetPassword = async (req, res) => {
 };
 
 exports.getAttendance = async (req, res) => {
-  const { token } = req.body;
-  const { courseID } = req.body;
+  const token = req.headers.authorization.split(' ')[1];
   const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+  const { courseID } = req.body;
   const student = await Student.findById(decodedToken.id);
   const course = await Course.find({ courseCode: courseID });
   const session = await Session.find({ course: course, status: 'off' });
@@ -206,4 +205,12 @@ exports.getAttendance = async (req, res) => {
     }
   }
   return res.status(200).json({ totalSessions: totalSessions, attendedSessions: attendedSessions, attendance: mp });
+}
+
+exports.getCourses = async (req, res) => {
+  const token = req.headers.authorization.split(' ')[1];
+  const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+  const student = await Student.findById(decodedToken.id);
+  const courses = await Course.find({ students: student });
+  return res.status(200).json({ courses: courses, message: 'Fetched data successfully'});
 }

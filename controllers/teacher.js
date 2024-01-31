@@ -185,6 +185,12 @@ exports.createSession = async (req, res) => {
 exports.markAttendance = async (req, res) => {
   try {
     const { studentRollNo, courseId } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    if(!teacher){
+      return res.status(400).json({ message: 'Teacher does not exists' });
+    }
     const course = await Course.find({ courseCode: courseId });
     const student = await Student.find({ rollNo: studentRollNo });
     const session = await Session.find({ course: course, status: 'on' });
@@ -200,6 +206,12 @@ exports.markAttendance = async (req, res) => {
 exports.stopSession = async (req, res) => {
   try {
     const { sessionCode } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    if(!teacher){
+      return res.status(400).json({ message: 'Teacher does not exists' });
+    }
     const session = await Session.findOne({ code: sessionCode, status: 'on' });
     session.status = 'off';
     await session.save();
@@ -254,6 +266,12 @@ exports.getAttendanceByDate = async (req, res) => {
 exports.getSheet = async (req, res) => {
   try {
     const { courseCode } = req.body;
+    const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    if(!teacher){
+      return res.status(400).json({ message: 'Teacher does not exists' });
+    }
     const course = await Course.findOne({ courseCode: courseCode });
     const attendance = await Attendance.find({ course: course });
     if(attendance){
