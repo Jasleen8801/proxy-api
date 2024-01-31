@@ -71,14 +71,16 @@ exports.createTeacher = async (req, res) => {
 
 exports.getAllTeachers = async (req, res) => {
   try {
-     const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
+    const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
+    console.log(`token: ${token}`);
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const admin = await Admin.findById(decodedToken.id);
     if (!admin) {
       return res.status(400).json({ message: 'Invalid Credentials' });
     }
     const teachers = await Teacher.find();
-    return res.status(200).json({ teachers: teachers });
+    console.log(teachers);
+    return res.status(200).json({ teachers: teachers, message: 'Teachers fetched successfully'});
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });

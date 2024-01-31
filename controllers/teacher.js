@@ -43,12 +43,13 @@ exports.postLogin = async (req, res) => {
   }
 }
 
-exports.getTeacher = async (req, res) => {
+exports.getCourses = async (req, res) => {
   try {
     const token = req.headers.authorization.split(' ')[1]; 
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
-    return res.status(200).json({ teacher: teacher, message: 'Fetched data successfully' });
+    const courses = await Course.find({ teacher: teacher });
+    return res.status(200).json({ courses: courses, message: 'Fetched data successfully' });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });

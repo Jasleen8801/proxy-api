@@ -1,11 +1,11 @@
 const express = require("express")
 const router = express.Router()
 
-const { postLogin, getTeacher, createCourse, createSession, resetPassword, updateTeacher, markAttendance, stopSession, getAttendance, getAttendanceByDate, getSheet, getAllStudents } = require("../controllers/teacher")
+const { postLogin, getCourses, createCourse, createSession, resetPassword, updateTeacher, markAttendance, stopSession, getAttendance, getAttendanceByDate, getSheet, getAllStudents } = require("../controllers/teacher")
 const { sendOTP, verifyOTP } = require('../controllers/mailer');
 
 router.post("/login", postLogin) //tested
-router.get("/", getTeacher) //tested
+router.get("/courses", getCourses) //tested
 router.post("/create-course", createCourse) //tested
 router.post('/send-otp', sendOTP); //tested
 router.post('/verify-otp', verifyOTP); //tested

@@ -21,10 +21,15 @@ const TeacherSchema = new Schema({
       ref: 'Course',
     },
   ],
-  // macAddress: {
-  //   type: String,
-  //   unique: true,
-  // },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  serial: {
+    type: Number,
+    unique: true,
+    autoIncrement: true,
+  },
 });
 
 module.exports = mongoose.model('Teacher', TeacherSchema);
