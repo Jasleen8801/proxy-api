@@ -191,6 +191,7 @@ exports.getAttendance = async (req, res) => {
   const { courseID } = req.body;
   const student = await Student.findById(decodedToken.id);
   const course = await Course.find({ courseCode: courseID });
+  const total = course.totalNoOfClasses;
   const session = await Session.find({ course: course, status: 'off' });
   let totalSessions = session.length;
   let attendedSessions = 0;
@@ -204,7 +205,8 @@ exports.getAttendance = async (req, res) => {
       mp.set(session[i].date, 'absent');
     }
   }
-  return res.status(200).json({ totalSessions: totalSessions, attendedSessions: attendedSessions, attendance: mp });
+  const leftSessions = total - totalSessions;
+  return res.status(200).json({ totalSessions: totalSessions, attendedSessions: attendedSessions, attendance: mp, leftSessions: leftSessions, message: 'Fetched data successfully'});
 }
 
 exports.getCourses = async (req, res) => {

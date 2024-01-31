@@ -39,6 +39,7 @@
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
+    <li><a href="#flutter-app">Flutter App</a></li>
   </ol>
 </details>
 
@@ -258,6 +259,11 @@ Project Link: [https://github.com/Jasleen8801/proxy-api](https://github.com/Jasl
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Flutter App
+
+The Flutter app for this project can be found [https://github.com/Ab-Abby-19/proxy](https://github.com/Ab-Abby-19/proxy)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 [product-screenshot]: images/screenshot.png
