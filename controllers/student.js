@@ -144,10 +144,10 @@ exports.markAttendance = async (req, res) => {
     const course = await Course.findById(courseID);
     const session = await Session.findOne({ code: code, course: course });
     if (!session) {
-      return res.status(400).json({ message: 'Invalid Code' });
+      return res.status(202).json({ message: 'Invalid Code' });
     }
     if (session.status === 'off') {
-      return res.status(400).json({ message: 'Session is off' });
+      return res.status(201).json({ message: 'Session is off' });
     }
 
     const data = {
