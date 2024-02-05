@@ -203,8 +203,8 @@ exports.markAttendance = async (req, res) => {
     }
     const session = await Session.findOne({
       course: course,
-      // date: { $lte: new Date() }, 
-    }).sort({ date: -1 });
+    }).sort({ startTime: -1 });
+    console.log(session);
     if(!session){
       return res.status(400).json({ message: 'Session does not exists' });
     }

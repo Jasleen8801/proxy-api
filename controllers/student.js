@@ -35,6 +35,7 @@ exports.postSignup = async (req, res) => {
 exports.postLogin = async (req, res) => {
   try {
     const userData = req.body;
+    console.log(userData);
 
     const existingUser = await Student.findOne({ email: userData.email });
     if (!existingUser) {
@@ -173,8 +174,10 @@ exports.resetPassword = async (req, res) => {
   try {
     const { cemail, newPassword } = req.body;
     const hashedPassword = await bcrypt.hash(newPassword, 12);  
-    const student = Student.findOneAndReplace({ email: cemail }, { password: hashedPassword });
-    console.log(student);
+    const student = await Student.findOne({ email: cemail });
+    student.password = hashedPassword;
+    await student.save();
+    // console.log(student);
     if(!student) {
       return res.status(400).json({ message: 'Invalid Email' });
     }
