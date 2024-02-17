@@ -10,7 +10,7 @@ class MDNSService extends EventEmitter {
         name: name,
         txtRecord: {
           teacherID: teacherID,
-          networkInterface: networkInterface,
+          // networkInterface: networkInterface,
         },
       }
     )

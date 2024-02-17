@@ -150,6 +150,46 @@ exports.markAttendance = async (req, res) => {
       return res.status(201).json({ message: 'Session is off' });
     }
 
+    const bssidOfTeacher = session.bssid;
+    const bssidOfStudent = networkInterface;
+    if (bssidOfTeacher !== bssidOfStudent) {
+      return res.status(203).json({ message: 'Invalid Network' });
+    }
+
+    const distance = Math.sqrt(Math.pow(session.teacherLocation.latitude - studentLocation.latitude, 2) + Math.pow(session.teacherLocation.longitude - studentLocation.longitude, 2));
+    const isWithinDistance = distance <= 0.01; // 50 meters
+    const isSameCode = code === session.code;
+
+    if(isWithinDistance && isSameCode){
+      const attendance = await Attendance.findOne({ session: session });
+      if(attendance.students.includes(student)) {
+        return res.status(204).json({ message: 'Already marked attendance' });
+      }
+      attendance.students.push(student);
+      await attendance.save();
+      return res.status(200).json({ message: 'Attendance marked successfully' });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}
+
+exports.markAttendance2 = async (req, res) => {
+  try {
+    const { code, courseID, studentLocation, networkInterface } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const student = await Student.findById(decodedToken.id);
+    const course = await Course.findOne({courseCode: courseID});
+    const session = await Session.findOne({ code: code, course: course });
+    if (!session) {
+      return res.status(202).json({ message: 'Invalid Code' });
+    }
+    if (session.status === 'off') {
+      return res.status(201).json({ message: 'Session is off' });
+    }
+
     const data = {
       studentID: student._id,
       studentLocation: studentLocation,

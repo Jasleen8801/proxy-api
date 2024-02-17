@@ -27,7 +27,7 @@ const SessionSchema = new Schema({
   },
   port: {
     type: Number,
-    required: true,
+    // required: true,
   },
 });
 

@@ -157,8 +157,53 @@ exports.updateTeacher = async (req, res) => {
 }
 
 exports.createSession = async (req, res) => {
+  const { courseID, location, networkInterface } = req.body;
+  const token = req.headers.authorization.split(' ')[1];
+  const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+  const teacher = await Teacher.findById(decodedToken.id);
+  if(!teacher){
+    return res.status(400).json({ message: 'Teacher does not exists' });
+  }
+  const course = await Course.findOne({ courseCode: courseID });
+  if(!course){
+    return res.status(400).json({ message: 'Course does not exists' });
+  }
+
+  const isSessionOn = await Session.findOne({ course: course, status: 'on' });
+  if (isSessionOn) {
+    return res.status(401).json({ message: 'Session already running' });
+  }
+
+  const min = 100000;
+  const max = 999999;
+  const code = Math.floor(Math.random() * (max - min + 1)) + min;
+
+  const loc = new Location({
+    latitude: location.latitude,
+    longitude: location.longitude,
+  });
+
+  const session = new Session({
+    course: course,
+    code: code,
+    teacherLocation: loc,
+    networkInterface: networkInterface,
+  });
+  await session.save();
+
+  const attendance = new Attendance({
+    session: session,
+    students: [],
+  });
+  await attendance.save();
+
+  return res.status(200).json({ message: 'Session created successfully', code: code });
+}
+
+exports.createSession2 = async (req, res) => {
   try {
     const { courseID, location, networkInterface } = req.body;
+    console.log(req.body)
     const token = req.headers.authorization.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
@@ -171,18 +216,18 @@ exports.createSession = async (req, res) => {
 
     const port = await portfinder.getPortPromise();
 
+    const min = 100000;
+    const max = 999999;
+    const code = Math.floor(Math.random() * (max - min + 1)) + min;
+
     const sessionObj = {
-      name: courseID,
+      name: courseID+'-'+code,
       teacherID: teacher._id,
       networkInterface: networkInterface,
       port: port,
     };
 
     startSocketServer(sessionObj);
-
-    const min = 100000;
-    const max = 999999;
-    const code = Math.floor(Math.random() * (max - min + 1)) + min;
 
     // console.log(courseID,course);
     if (!course) {
@@ -320,25 +365,27 @@ exports.getAttendanceByDate = async (req, res) => {
 exports.getSheet = async (req, res) => {
   try {
     const { courseCode } = req.body;
+    console.log(courseCode);
     const token = req.headers.authorization.split(' ')[1]; // Bearer <token>
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const teacher = await Teacher.findById(decodedToken.id);
-    if(!teacher){
-      return res.status(400).json({ message: 'Teacher does not exists' });
+    if (!teacher) {
+      return res.status(400).json({ message: 'Teacher does not exist' });
     }
     const course = await Course.findOne({ courseCode: courseCode });
     const attendance = await Attendance.find({ course: course });
-    if(attendance){
+
+    if (attendance) {
       const spreadsheetId = attendance.spreadsheetId;
       const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
       return res.status(200).json({ url: url, message: 'Fetched data successfully' });
     }
 
-    const API_URL = `${process.env.NODESERVER}/${process.env.PORT}`;
-    const res = axios.post(`${API_URL}/teacher/attendance`, {
+    const API_URL = `${process.env.NODESERVER}`;
+    const axiosResponse = await axios.post(`${API_URL}/teacher/attendance`, {
       courseCode: courseCode,
     });
-    const mp = res.data.attendance;
+    const mp = axiosResponse.data.attendance;
 
     let spreadsheetId = createGoogleSheet(`${courseCode} Attendance`);
     spreadsheetId = updateGoogleSheet(spreadsheetId, mp);
@@ -349,6 +396,7 @@ exports.getSheet = async (req, res) => {
     await sheet.save();
 
     const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+    console.log(url);
     return res.status(200).json({ url: url, message: 'Fetched data successfully' });
   } catch (error) {
     console.log(error);
