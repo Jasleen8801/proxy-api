@@ -138,11 +138,10 @@ exports.joinCourse = async (req, res) => {
 exports.markAttendance = async (req, res) => {
   try {
     const { code, courseID, studentLocation, networkInterface } = req.body;
-    const { token } = req.body;
-
+    const token = req.headers.authorization.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
     const student = await Student.findById(decodedToken.id);
-    const course = await Course.findById(courseID);
+    const course = await Course.findOne({courseCode: courseID});
     const session = await Session.findOne({ code: code, course: course });
     if (!session) {
       return res.status(202).json({ message: 'Invalid Code' });

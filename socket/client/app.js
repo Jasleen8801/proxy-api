@@ -1,13 +1,17 @@
 const mdnsService = require('./mdns');
-const startTCPServer = require('./tcp');
+const sendAttendanceData = require('./tcp');
 
 const startSocketClient = (port, data) => {
   mdnsService.on('serviceDiscovered', (service) => {
     console.log('Teacher service discovered', service);
-    startTCPServer(port, service.host, data);
+    sendAttendanceData(port, service.host, data);
+  });
+
+  mdnsService.on('error', (err) => {
+    console.log(err);
   });
 
   mdnsService.discoverService(data.networkInterface);
 };
 
-module.exports = startSocketClient;
+module.exports = { startSocketClient };

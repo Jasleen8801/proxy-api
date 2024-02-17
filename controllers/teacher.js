@@ -68,10 +68,13 @@ exports.createCourse = async (req, res) => {
     const min = 100000;
     const max = 999999;
     const code = Math.floor(Math.random() * (max - min + 1)) + min;
+
+    const noOfCourses = await Course.find({ teacher: teacher }).countDocuments();
     
     const course = new Course({
       ...courseData,
       code: code,
+      serial: noOfCourses + 1,
     });
     await course.save();
 
@@ -79,6 +82,34 @@ exports.createCourse = async (req, res) => {
     await teacher.save();
     
     return res.status(200).json({ message: 'Course created successfully', code: code });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: 'Server Error' });
+  }
+}
+
+exports.deleteCourse = async (req, res) => {
+  try {
+    const { courseCode } = req.body;
+    const token = req.headers.authorization.split(' ')[1];
+    const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+    const teacher = await Teacher.findById(decodedToken.id);
+    if(!teacher){
+      return res.status(400).json({ message: 'Teacher does not exists' });
+    }
+    teacher.courses = teacher.courses.filter((course) => course.courseCode !== courseCode);
+    await teacher.save();
+    const course = await Course.findOne({ courseCode: courseCode });
+    if(!course){
+      return res.status(400).json({ message: 'Course does not exists' });
+    }
+    await Course.findByIdAndDelete(course._id);
+    const students = await Student.find({ course: course });
+    for (let i=0; i<students.length; i++){
+      students[i].course = students[i].course.filter((c) => c.courseCode !== courseCode);
+      await students[i].save();
+    }
+    return res.status(200).json({ message: 'Course deleted successfully' });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: 'Server Error' });

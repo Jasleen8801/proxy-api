@@ -1,11 +1,11 @@
 const mdnsService = require('./mdns');
-const tcpServer = require('./tcp');
+const startTCPServer = require('./tcp');
 
 const activeSessions = new Map();
 
 const startSocketServer = (session) => {
   mdnsService.startAdvertisement(session.port, session.name, session.teacherID, session.networkInterface);
-  const server = tcpServer(session.port);
+  const server = startTCPServer(session.port);
   activeSessions.set(session._id, server);
 }
 
