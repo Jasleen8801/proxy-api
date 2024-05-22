@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const mdns = require('mdns');
+// const mdns = require('mdns');
 const net = require('net');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -10,7 +10,7 @@ const Course = require('../models/course');
 const Session = require('../models/session');
 const Attendance = require('../models/attendance');
 const createToken = require('../middlewares/studentCreateToken');
-const { startSocketClient } = require('../socket/client/app');
+// const { startSocketClient } = require('../socket/client/app');
 
 exports.postSignup = async (req, res) => {
   try {
