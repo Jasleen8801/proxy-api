@@ -195,17 +195,16 @@ exports.markAttendance2 = async (req, res) => {
       studentLocation: studentLocation,
       code: code,
       sessionID: session._id,
-      networkInterface: networkInterface,
+      bssidOfStudent: networkInterface,
+      bssidOfTeacher: session.bssid
     };
 
     startSocketClient(session.port, data); 
 
-    setTimeout(() => {
-      return res.status(400).json({ message: "Can't mark attendance, contact your teacher" });
-    }, 10000);
+    return res.status(200).json({ message: 'Attendance marked successfully' });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: 'Server Error' });
+    return res.status(500).json({ message: 'Couldn\'t mark attendance. Contact your teacher.' });
   }
 };
 
